@@ -14,12 +14,17 @@ public class UserEventsConsumer {
 
     private final UserBootstrapService userBootstrapService;
 
-    @KafkaListener(topics = "${users.kafka.topic-user-events:user-events}")
-    public void onMessage(UserCreatedEvent event) {
-        if (!UsersConstants.EVENT_USER_CREATED.equals(event.event())) {
+    @KafkaListener(topics = "user-events", groupId = "users-service-group")
+    public void consume(UserCreatedEvent payload) {
+        log.info("Evento recibido: {} para usuario: {}",
+                 payload.event(), payload.id());
+        if (!UsersConstants.EVENT_USER_CREATED.equals(payload.event())) {
             return;
         }
-        userBootstrapService.createFromEvent(event);
-        log.info("Processed USER_CREATED for user {}", event.id());
+        userBootstrapService.createFromEvent(payload);
+        // lógica existente
+    }
+    public void onMessage(UserCreatedEvent payload) {
+        consume(payload);
     }
 }

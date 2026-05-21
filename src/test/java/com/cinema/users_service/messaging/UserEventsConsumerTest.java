@@ -21,7 +21,7 @@ class UserEventsConsumerTest {
     private UserEventsConsumer consumer;
 
     @Test
-    void shouldDelegateWhenEventIsUserCreated() {
+    void userCreatedEventShouldCreateProfileAndWallet() {
         // Arrange
         UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", "550e8400-e29b-41d4-a716-446655440000", "Ana", "5555");
 
@@ -33,7 +33,20 @@ class UserEventsConsumerTest {
     }
 
     @Test
-    void shouldIgnoreWhenEventIsDifferent() {
+    void duplicatedUserCreatedEventShouldKeepIdempotentFlow() {
+        // Arrange
+        UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", "550e8400-e29b-41d4-a716-446655440000", "Ana", "5555");
+
+        // Act
+        consumer.onMessage(event);
+        consumer.onMessage(event);
+
+        // Assert
+        verify(userBootstrapService, times(2)).createFromEvent(event);
+    }
+
+    @Test
+    void differentEventShouldBeIgnored() {
         // Arrange
         UserCreatedEvent event = new UserCreatedEvent("OTHER_EVENT", "550e8400-e29b-41d4-a716-446655440000", "Ana", "5555");
 

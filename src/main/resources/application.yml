@@ -3,7 +3,10 @@ server:
 
 spring:
   application:
-    name: users-service
+    name: cinema-users-service
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/users_db}
     username: ${DB_USERNAME:postgres}
@@ -18,13 +21,12 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/users_db}
-    user: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    baseline-on-migrate: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: ${SPRING_FLYWAY_BASELINE_VERSION:0}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:18.188.55.33:9092}
+    bootstrap-servers: 18.188.55.33:9092
     consumer:
-      group-id: ${KAFKA_CONSUMER_GROUP:users-service}
+      group-id: users-service-group
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
@@ -41,6 +43,19 @@ springdoc:
     path: /swagger-ui.html
 
 users:
+  auth:
+    base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:8081}
   kafka:
-    topic-user-events: user-events
+    topic-user-events: ${KAFKA_TOPIC_USER_EVENTS:user-events}
+  password-change-url: ${USERS_PASSWORD_CHANGE_URL:http://localhost:4200/forgot-password}
+  bootstrap:
+    max-attempts: ${USERS_BOOTSTRAP_MAX_ATTEMPTS:20}
+    retry-delay-ms: ${USERS_BOOTSTRAP_RETRY_DELAY_MS:3000}
+
+notifications:
+  brevo:
+    enabled: ${BREVO_ENABLED:true}
+    api-key: ${BREVO_API_KEY:}
+    sender-email: ${BREVO_SENDER_EMAIL:noreply@cinema.local}
+    sender-name: ${BREVO_SENDER_NAME:cinema}
 

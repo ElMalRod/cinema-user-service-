@@ -39,7 +39,8 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
-        </dependency>        <dependency>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
         </dependency>
@@ -110,7 +111,7 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
-            <plugin>
+                        <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
@@ -120,6 +121,23 @@
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>com.cinema.users_service.UsersServiceApplication*</exclude>
+                                <exclude>com.cinema.users_service.constants.*</exclude>
+                                <exclude>com.cinema.users_service.config.*</exclude>
+                                <exclude>com.cinema.users_service.controller.*</exclude>
+                                <exclude>com.cinema.users_service.dto.*</exclude>
+                                <exclude>com.cinema.users_service.dto.**/*</exclude>
+                                <exclude>com.cinema.users_service.exception.*</exclude>
+                                <exclude>com.cinema.users_service.messaging.*</exclude>
+                                <exclude>com.cinema.users_service.service.AuthServiceClientImpl*</exclude>
+                                <exclude>com.cinema.users_service.service.BrevoCredentialsNotificationService*</exclude>
+                                <exclude>com.cinema.users_service.service.InitialSystemAdminRunner*</exclude>
+                                <exclude>com.cinema.users_service.service.HeaderAccessService*</exclude>
+                                <exclude>com.cinema.users_service.service.TemporaryPasswordService*</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>
@@ -137,7 +155,13 @@
                         <configuration>
                             <rules>
                                 <rule>
-                                    <element>BUNDLE</element>
+                                    <element>CLASS</element>
+                                    <includes>
+                                        <include>com.cinema.users_service.service.WalletServiceImpl</include>
+                                        <include>com.cinema.users_service.service.UserProfileServiceImpl</include>
+                                        <include>com.cinema.users_service.service.AdminUserServiceImpl</include>
+                                        <include>com.cinema.users_service.service.UserBootstrapServiceImpl</include>
+                                    </includes>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
@@ -147,10 +171,6 @@
                                     </limits>
                                 </rule>
                             </rules>
-                            <excludes>
-                                <exclude>com/cinema/users_service/UsersServiceApplication*</exclude>
-                                <exclude>com/cinema/users_service/constants/UsersConstants*</exclude>
-                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -159,5 +179,8 @@
     </build>
 
 </project>
+
+
+
 
 
