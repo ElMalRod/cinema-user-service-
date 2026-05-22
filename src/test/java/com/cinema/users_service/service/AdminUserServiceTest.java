@@ -12,7 +12,6 @@ import com.cinema.users_service.dto.auth.AuthUserResponse;
 import com.cinema.users_service.exception.DuplicateUserException;
 import com.cinema.users_service.exception.InvalidAdminOperationException;
 import com.cinema.users_service.exception.UserProfileNotFoundException;
-import com.cinema.users_service.messaging.UserCreatedEvent;
 import com.cinema.users_service.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +26,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -56,9 +54,6 @@ class AdminUserServiceTest {
     @Mock
     private CinemaServiceClient cinemaServiceClient;
 
-    @Mock
-    private UserEventsPublisher userEventsPublisher;
-
     private AdminUserServiceImpl adminUserService;
 
     @BeforeEach
@@ -70,13 +65,12 @@ class AdminUserServiceTest {
                 temporaryPasswordService,
                 credentialsNotificationService,
                 cinemaServiceClient,
-                userEventsPublisher,
                 "http://localhost:4200/forgot-password"
         );
     }
 
     @Test
-    void createClientShouldCallAuthCreateProfilePublishEventAndSendEmail() {
+    void createClientShouldCallAuthCreateProfileAndSendEmail() {
         // Arrange
         UUID userId = UUID.randomUUID();
         AdminCreateUserRequest request = new AdminCreateUserRequest(" Ana ", "5555", " ANA@TEST.COM ", UserRole.CLIENT, null, null);
@@ -91,6 +85,9 @@ class AdminUserServiceTest {
         ArgumentCaptor<AuthCreateUserRequest> authRequestCaptor = ArgumentCaptor.forClass(AuthCreateUserRequest.class);
         verify(authServiceClient).createUser(authRequestCaptor.capture());
         AuthCreateUserRequest sentRequest = authRequestCaptor.getValue();
+        assertEquals("Ana", sentRequest.name());
+        assertEquals("5555", sentRequest.phone());
+        assertEquals(null, sentRequest.companyName());
         assertEquals("ana@test.com", sentRequest.email());
         assertEquals("TempPass123@", sentRequest.password());
         assertEquals(UserRole.CLIENT, sentRequest.role());
@@ -98,23 +95,13 @@ class AdminUserServiceTest {
 
         verify(userProfileService).createProfileAndWallet(userId, "Ana", "5555");
         verify(cinemaServiceClient, never()).assignCinemaAdmin(any(UUID.class), any(UUID.class));
-
-        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
-        verify(userEventsPublisher).publish(eventCaptor.capture());
-        UserCreatedEvent event = eventCaptor.getValue();
-        assertEquals(UsersConstants.EVENT_USER_CREATED, event.event());
-        assertEquals(userId.toString(), event.id());
-        assertEquals("Ana", event.name());
-        assertEquals("5555", event.phone());
-        assertNull(event.companyName());
-
         verify(credentialsNotificationService).sendWelcomeCredentials(" Ana ", " ANA@TEST.COM ", "TempPass123@", "http://localhost:4200/forgot-password");
         assertEquals(userId, response.userId());
         assertEquals("CLIENT", response.role());
     }
 
     @Test
-    void createAdvertiserShouldPublishAdvertiserEvent() {
+    void createAdvertiserShouldCallAuthCreateProfileAndSendEmail() {
         // Arrange
         UUID userId = UUID.randomUUID();
         AdminCreateUserRequest request = new AdminCreateUserRequest("Acme", "4444", "ads@test.com", UserRole.ADVERTISER, null, null);
@@ -126,23 +113,20 @@ class AdminUserServiceTest {
         adminUserService.createUser(request);
 
         // Assert
+        ArgumentCaptor<AuthCreateUserRequest> authRequestCaptor = ArgumentCaptor.forClass(AuthCreateUserRequest.class);
+        verify(authServiceClient).createUser(authRequestCaptor.capture());
+        AuthCreateUserRequest sentRequest = authRequestCaptor.getValue();
+        assertEquals("Acme", sentRequest.name());
+        assertEquals("4444", sentRequest.phone());
+        assertEquals(null, sentRequest.companyName());
+
         verify(userProfileService).createProfileAndWallet(userId, "Acme", "4444");
         verify(cinemaServiceClient, never()).assignCinemaAdmin(any(UUID.class), any(UUID.class));
-
-        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
-        verify(userEventsPublisher).publish(eventCaptor.capture());
-        UserCreatedEvent event = eventCaptor.getValue();
-        assertEquals(UsersConstants.EVENT_ADVERTISER_CREATED, event.event());
-        assertEquals(userId.toString(), event.id());
-        assertEquals("Acme", event.name());
-        assertEquals("4444", event.phone());
-        assertNull(event.companyName());
-
         verify(credentialsNotificationService).sendWelcomeCredentials("Acme", "ads@test.com", "TempPass123@", "http://localhost:4200/forgot-password");
     }
 
     @Test
-    void createCinemaAdminWithCompanyNameShouldAssignCinemaAndPublishCinemaEvent() {
+    void createCinemaAdminWithCinemaIdShouldAssignCinemaAndForwardCompanyName() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID cinemaId = UUID.randomUUID();
@@ -162,20 +146,18 @@ class AdminUserServiceTest {
         adminUserService.createUser(request);
 
         // Assert
-        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
-        verify(userEventsPublisher).publish(eventCaptor.capture());
-        UserCreatedEvent event = eventCaptor.getValue();
-        assertEquals(UsersConstants.EVENT_CINEMA_ADMIN_CREATED, event.event());
-        assertEquals(userId.toString(), event.id());
-        assertEquals("Cinema Admin", event.name());
-        assertEquals("6666", event.phone());
-        assertEquals("Cinepolis Majadas", event.companyName());
+        ArgumentCaptor<AuthCreateUserRequest> authRequestCaptor = ArgumentCaptor.forClass(AuthCreateUserRequest.class);
+        verify(authServiceClient).createUser(authRequestCaptor.capture());
+        AuthCreateUserRequest sentRequest = authRequestCaptor.getValue();
+        assertEquals("Cinema Admin", sentRequest.name());
+        assertEquals("6666", sentRequest.phone());
+        assertEquals("Cinepolis Majadas", sentRequest.companyName());
 
         verify(cinemaServiceClient).assignCinemaAdmin(cinemaId, userId);
     }
 
     @Test
-    void createCinemaAdminWithoutCompanyNameShouldPublishNullCompanyName() {
+    void createCinemaAdminWithoutCompanyNameShouldForwardNullCompanyName() {
         // Arrange
         UUID userId = UUID.randomUUID();
         AdminCreateUserRequest request = new AdminCreateUserRequest(
@@ -194,11 +176,9 @@ class AdminUserServiceTest {
         adminUserService.createUser(request);
 
         // Assert
-        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
-        verify(userEventsPublisher).publish(eventCaptor.capture());
-        UserCreatedEvent event = eventCaptor.getValue();
-        assertEquals(UsersConstants.EVENT_CINEMA_ADMIN_CREATED, event.event());
-        assertNull(event.companyName());
+        ArgumentCaptor<AuthCreateUserRequest> authRequestCaptor = ArgumentCaptor.forClass(AuthCreateUserRequest.class);
+        verify(authServiceClient).createUser(authRequestCaptor.capture());
+        assertEquals(null, authRequestCaptor.getValue().companyName());
     }
 
     @Test
@@ -216,7 +196,6 @@ class AdminUserServiceTest {
         // Assert
         assertEquals("El email ya existe en auth-service", exception.getMessage());
         verify(userProfileService, never()).createProfileAndWallet(any(UUID.class), any(String.class), any(String.class));
-        verify(userEventsPublisher, never()).publish(any(UserCreatedEvent.class));
     }
 
     @Test
@@ -303,6 +282,7 @@ class AdminUserServiceTest {
         ArgumentCaptor<AuthCreateUserRequest> captor = ArgumentCaptor.forClass(AuthCreateUserRequest.class);
         verify(authServiceClient).createUser(captor.capture());
         AuthCreateUserRequest request = captor.getValue();
+        assertEquals(UsersConstants.DEFAULT_SYSTEM_ADMIN_NAME, request.name());
         assertEquals(UsersConstants.DEFAULT_SYSTEM_ADMIN_EMAIL, request.email());
         assertEquals(UsersConstants.DEFAULT_SYSTEM_ADMIN_PASSWORD, request.password());
         assertEquals(UserRole.SYSTEM_ADMIN, request.role());
