@@ -4,6 +4,7 @@ public record UserCreatedEvent(
         String event,
         String id,
         String name,
-        String phone
+        String phone,
+        String companyName
 ) {
 }

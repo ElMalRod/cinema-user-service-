@@ -24,14 +24,14 @@ public class UserBootstrapServiceImpl implements UserBootstrapService {
             return;
         }
         userProfileService.createProfileAndWallet(userId.get(), event.name(), event.phone());
-        log.info("Profile and wallet created from USER_CREATED for user {}", userId.get());
+        log.info("Profile and wallet created from {} for user {}", event.event(), userId.get());
     }
 
     private Optional<UUID> parseUserId(String rawId) {
         try {
             return Optional.of(UUID.fromString(rawId));
         } catch (Exception exception) {
-            log.warn("Skipping USER_CREATED with invalid user id: {}", rawId);
+            log.warn("Skipping {} with invalid user id: {}", "user-events", rawId);
             return Optional.empty();
         }
     }

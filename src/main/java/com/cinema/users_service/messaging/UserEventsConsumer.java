@@ -16,15 +16,20 @@ public class UserEventsConsumer {
 
     @KafkaListener(topics = "user-events", groupId = "users-service-group")
     public void consume(UserCreatedEvent payload) {
-        log.info("Evento recibido: {} para usuario: {}",
-                 payload.event(), payload.id());
-        if (!UsersConstants.EVENT_USER_CREATED.equals(payload.event())) {
+        log.info("Evento recibido: {} para usuario: {}", payload.event(), payload.id());
+        if (!isProfileBootstrapEvent(payload.event())) {
             return;
         }
         userBootstrapService.createFromEvent(payload);
-        // lógica existente
     }
+
     public void onMessage(UserCreatedEvent payload) {
         consume(payload);
+    }
+
+    private boolean isProfileBootstrapEvent(String event) {
+        return UsersConstants.EVENT_USER_CREATED.equals(event)
+                || UsersConstants.EVENT_CINEMA_ADMIN_CREATED.equals(event)
+                || UsersConstants.EVENT_ADVERTISER_CREATED.equals(event);
     }
 }

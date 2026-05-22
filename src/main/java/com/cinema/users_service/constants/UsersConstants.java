@@ -6,6 +6,8 @@ import java.util.Set;
 public final class UsersConstants {
 
     public static final String EVENT_USER_CREATED = "USER_CREATED";
+    public static final String EVENT_CINEMA_ADMIN_CREATED = "CINEMA_ADMIN_CREATED";
+    public static final String EVENT_ADVERTISER_CREATED = "ADVERTISER_CREATED";
     public static final String KAFKA_TOPIC_USER_EVENTS = "user-events";
 
     public static final String HEADER_USER_ID = "X-User-Id";
@@ -14,6 +16,7 @@ public final class UsersConstants {
     public static final String HEADER_INTERNAL_SERVICE_VALUE = "true";
 
     public static final String ROLE_SYSTEM_ADMIN = "SYSTEM_ADMIN";
+    public static final String ROLE_CINEMA_ADMIN = "CINEMA_ADMIN";
     public static final Set<String> ADMIN_MANAGED_ROLES = Set.of(
             "SYSTEM_ADMIN",
             "CINEMA_ADMIN",
@@ -37,3 +40,4 @@ public final class UsersConstants {
     private UsersConstants() {
     }
 }
+

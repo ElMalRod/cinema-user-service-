@@ -3,6 +3,7 @@ package com.cinema.users_service.controller;
 import com.cinema.users_service.constants.UsersConstants;
 import com.cinema.users_service.dto.admin.AdminCreateUserRequest;
 import com.cinema.users_service.dto.admin.AdminUserResponse;
+import com.cinema.users_service.dto.admin.AssignCinemaAdminRequest;
 import com.cinema.users_service.service.AdminUserService;
 import com.cinema.users_service.service.HeaderAccessService;
 import jakarta.validation.Valid;
@@ -47,6 +48,25 @@ public class AdminUserController {
     ) {
         headerAccessService.requireSystemAdmin(userRole);
         return ResponseEntity.ok(adminUserService.listUsers());
+    }
+
+    @GetMapping("/cinema-admins/unassigned")
+    public ResponseEntity<List<AdminUserResponse>> listUnassignedCinemaAdmins(
+            @RequestHeader(UsersConstants.HEADER_USER_ROLE) String userRole
+    ) {
+        headerAccessService.requireSystemAdmin(userRole);
+        return ResponseEntity.ok(adminUserService.listUnassignedCinemaAdmins());
+    }
+
+    @PatchMapping("/cinema-admins/{userId}/assign")
+    public ResponseEntity<Void> assignCinemaAdmin(
+            @RequestHeader(UsersConstants.HEADER_USER_ROLE) String userRole,
+            @PathVariable UUID userId,
+            @Valid @RequestBody AssignCinemaAdminRequest request
+    ) {
+        headerAccessService.requireSystemAdmin(userRole);
+        adminUserService.assignCinemaAdmin(userId, request.cinemaId());
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{userId}/deactivate")

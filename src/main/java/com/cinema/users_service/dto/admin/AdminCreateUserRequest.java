@@ -5,10 +5,14 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.util.UUID;
+
 public record AdminCreateUserRequest(
         @NotBlank String name,
         String phone,
         @NotBlank @Email String email,
-        @NotNull UserRole role
+        @NotNull UserRole role,
+        String companyName,
+        UUID cinemaId
 ) {
 }
