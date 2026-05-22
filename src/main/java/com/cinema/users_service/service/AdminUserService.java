@@ -14,6 +14,10 @@ public interface AdminUserService {
 
     List<AdminUserResponse> listUsers();
 
+    List<AdminUserResponse> listUnassignedCinemaAdmins();
+
+    void assignCinemaAdmin(UUID userId, UUID cinemaId);
+
     void deactivateUser(UUID userId);
 
     void activateUser(UUID userId);

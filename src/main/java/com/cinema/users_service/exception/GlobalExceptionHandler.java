@@ -22,7 +22,7 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
     }
 
-    @ExceptionHandler({InvalidAmountException.class, InvalidHeaderException.class})
+    @ExceptionHandler({InvalidAmountException.class, InvalidHeaderException.class, InvalidAdminOperationException.class})
     public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex, HttpServletRequest request) {
         return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
     }

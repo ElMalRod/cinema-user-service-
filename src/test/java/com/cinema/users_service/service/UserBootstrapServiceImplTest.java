@@ -26,7 +26,7 @@ class UserBootstrapServiceImplTest {
     void shouldCreateProfileAndWalletFromValidEvent() {
         // Arrange
         String userId = UUID.randomUUID().toString();
-        UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", userId, "Ana", "5555");
+        UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", userId, "Ana", "5555", null);
 
         // Act
         service.createFromEvent(event);
@@ -38,7 +38,7 @@ class UserBootstrapServiceImplTest {
     @Test
     void shouldSkipEventWhenUserIdIsInvalid() {
         // Arrange
-        UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", "bad-id", "Ana", "5555");
+        UserCreatedEvent event = new UserCreatedEvent("USER_CREATED", "bad-id", "Ana", "5555", null);
 
         // Act
         service.createFromEvent(event);

@@ -45,6 +45,8 @@ springdoc:
 users:
   auth:
     base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:8081}
+  cinema:
+    base-url: ${CINEMA_SERVICE_BASE_URL:http://localhost:8084}
   kafka:
     topic-user-events: ${KAFKA_TOPIC_USER_EVENTS:user-events}
   password-change-url: ${USERS_PASSWORD_CHANGE_URL:http://localhost:4200/forgot-password}
@@ -58,4 +60,3 @@ notifications:
     api-key: ${BREVO_API_KEY:}
     sender-email: ${BREVO_SENDER_EMAIL:noreply@cinema.local}
     sender-name: ${BREVO_SENDER_NAME:cinema}
-

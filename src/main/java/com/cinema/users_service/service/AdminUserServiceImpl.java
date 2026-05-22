@@ -2,15 +2,19 @@ package com.cinema.users_service.service;
 
 import com.cinema.users_service.constants.UsersConstants;
 import com.cinema.users_service.domain.UserProfile;
+import com.cinema.users_service.domain.UserRole;
 import com.cinema.users_service.dto.admin.AdminCreateUserRequest;
 import com.cinema.users_service.dto.admin.AdminUserResponse;
 import com.cinema.users_service.dto.auth.AuthCreateUserRequest;
 import com.cinema.users_service.dto.auth.AuthCreateUserResponse;
 import com.cinema.users_service.dto.auth.AuthUserResponse;
+import com.cinema.users_service.exception.InvalidAdminOperationException;
+import com.cinema.users_service.exception.UserProfileNotFoundException;
 import com.cinema.users_service.repository.WalletRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -23,6 +27,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final WalletRepository walletRepository;
     private final TemporaryPasswordService temporaryPasswordService;
     private final CredentialsNotificationService credentialsNotificationService;
+    private final CinemaServiceClient cinemaServiceClient;
     private final String passwordChangeUrl;
 
     public AdminUserServiceImpl(AuthServiceClient authServiceClient,
@@ -30,12 +35,14 @@ public class AdminUserServiceImpl implements AdminUserService {
                                 WalletRepository walletRepository,
                                 TemporaryPasswordService temporaryPasswordService,
                                 CredentialsNotificationService credentialsNotificationService,
+                                CinemaServiceClient cinemaServiceClient,
                                 @Value("${users.password-change-url:http://localhost:4200/forgot-password}") String passwordChangeUrl) {
         this.authServiceClient = authServiceClient;
         this.userProfileService = userProfileService;
         this.walletRepository = walletRepository;
         this.temporaryPasswordService = temporaryPasswordService;
         this.credentialsNotificationService = credentialsNotificationService;
+        this.cinemaServiceClient = cinemaServiceClient;
         this.passwordChangeUrl = passwordChangeUrl;
     }
 
@@ -50,6 +57,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         String temporaryPassword = temporaryPasswordService.generate();
         AuthCreateUserResponse created = authServiceClient.createUser(buildAuthRequest(request, temporaryPassword));
         userProfileService.createProfileAndWallet(created.id(), request.name().trim(), request.phone());
+        assignCinemaIfRequested(created.id(), request);
         credentialsNotificationService.sendWelcomeCredentials(request.name(), request.email(), temporaryPassword, passwordChangeUrl);
         return mapCreatedUser(created, request);
     }
@@ -60,6 +68,24 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
+    public List<AdminUserResponse> listUnassignedCinemaAdmins() {
+        return authServiceClient.listUsers().stream()
+                .filter(this::isCinemaAdmin)
+                .filter(user -> !cinemaServiceClient.hasCinemaAssigned(user.id()))
+                .map(this::mapUser)
+                .toList();
+    }
+
+    @Override
+    public void assignCinemaAdmin(UUID userId, UUID cinemaId) {
+        AuthUserResponse user = authServiceClient.findUserById(userId)
+                .orElseThrow(() -> new UserProfileNotFoundException("Usuario no encontrado"));
+
+        validateCinemaAdmin(user);
+        cinemaServiceClient.assignCinemaAdmin(cinemaId, userId);
+    }
+
+    @Override
     public void deactivateUser(UUID userId) {
         authServiceClient.deactivateUser(userId);
     }
@@ -67,6 +93,23 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     public void activateUser(UUID userId) {
         authServiceClient.activateUser(userId);
+    }
+
+    private void assignCinemaIfRequested(UUID userId, AdminCreateUserRequest request) {
+        if (request.role() != UserRole.CINEMA_ADMIN || request.cinemaId() == null) {
+            return;
+        }
+        cinemaServiceClient.assignCinemaAdmin(request.cinemaId(), userId);
+    }
+
+    private boolean isCinemaAdmin(AuthUserResponse user) {
+        return UsersConstants.ROLE_CINEMA_ADMIN.equalsIgnoreCase(user.role()) && user.active();
+    }
+
+    private void validateCinemaAdmin(AuthUserResponse user) {
+        if (!isCinemaAdmin(user)) {
+            throw new InvalidAdminOperationException("Solo usuarios CINEMA_ADMIN activos se pueden asignar a un cine");
+        }
     }
 
     private AuthUserResponse resolveOrCreateDefaultSystemAdmin() {
@@ -85,7 +128,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         AuthCreateUserResponse created = authServiceClient.createUser(new AuthCreateUserRequest(
                 UsersConstants.DEFAULT_SYSTEM_ADMIN_EMAIL,
                 UsersConstants.DEFAULT_SYSTEM_ADMIN_PASSWORD,
-                com.cinema.users_service.domain.UserRole.SYSTEM_ADMIN,
+                UserRole.SYSTEM_ADMIN,
                 false
         ));
 
@@ -127,7 +170,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private AdminUserResponse mapUser(AuthUserResponse authUser) {
         UserProfile profile = userProfileService.findProfile(authUser.id()).orElse(null);
-        java.math.BigDecimal balance = walletRepository.findByUserId(authUser.id())
+        BigDecimal balance = walletRepository.findByUserId(authUser.id())
                 .map(wallet -> wallet.getBalance())
                 .orElse(UsersConstants.DEFAULT_WALLET_BALANCE);
         String name = profile == null ? null : profile.getName();
