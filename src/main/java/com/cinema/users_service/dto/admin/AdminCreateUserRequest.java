@@ -12,6 +12,7 @@ public record AdminCreateUserRequest(
         String phone,
         @NotBlank @Email String email,
         @NotNull UserRole role,
+        String companyName,
         UUID cinemaId
 ) {
 }

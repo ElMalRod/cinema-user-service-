@@ -12,6 +12,7 @@ import com.cinema.users_service.dto.auth.AuthUserResponse;
 import com.cinema.users_service.exception.DuplicateUserException;
 import com.cinema.users_service.exception.InvalidAdminOperationException;
 import com.cinema.users_service.exception.UserProfileNotFoundException;
+import com.cinema.users_service.messaging.UserCreatedEvent;
 import com.cinema.users_service.repository.WalletRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -54,6 +56,9 @@ class AdminUserServiceTest {
     @Mock
     private CinemaServiceClient cinemaServiceClient;
 
+    @Mock
+    private UserEventsPublisher userEventsPublisher;
+
     private AdminUserServiceImpl adminUserService;
 
     @BeforeEach
@@ -65,15 +70,16 @@ class AdminUserServiceTest {
                 temporaryPasswordService,
                 credentialsNotificationService,
                 cinemaServiceClient,
+                userEventsPublisher,
                 "http://localhost:4200/forgot-password"
         );
     }
 
     @Test
-    void createClientShouldCallAuthCreateProfileAndSendEmail() {
+    void createClientShouldCallAuthCreateProfilePublishEventAndSendEmail() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AdminCreateUserRequest request = new AdminCreateUserRequest(" Ana ", "5555", " ANA@TEST.COM ", UserRole.CLIENT, null);
+        AdminCreateUserRequest request = new AdminCreateUserRequest(" Ana ", "5555", " ANA@TEST.COM ", UserRole.CLIENT, null, null);
         when(temporaryPasswordService.generate()).thenReturn("TempPass123@");
         when(authServiceClient.createUser(any(AuthCreateUserRequest.class)))
                 .thenReturn(new AuthCreateUserResponse(userId, "ana@test.com", "CLIENT", true, true));
@@ -92,16 +98,26 @@ class AdminUserServiceTest {
 
         verify(userProfileService).createProfileAndWallet(userId, "Ana", "5555");
         verify(cinemaServiceClient, never()).assignCinemaAdmin(any(UUID.class), any(UUID.class));
+
+        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
+        verify(userEventsPublisher).publish(eventCaptor.capture());
+        UserCreatedEvent event = eventCaptor.getValue();
+        assertEquals(UsersConstants.EVENT_USER_CREATED, event.event());
+        assertEquals(userId.toString(), event.id());
+        assertEquals("Ana", event.name());
+        assertEquals("5555", event.phone());
+        assertNull(event.companyName());
+
         verify(credentialsNotificationService).sendWelcomeCredentials(" Ana ", " ANA@TEST.COM ", "TempPass123@", "http://localhost:4200/forgot-password");
         assertEquals(userId, response.userId());
         assertEquals("CLIENT", response.role());
     }
 
     @Test
-    void createAdvertiserShouldCallAuthCreateProfileAndSendEmail() {
+    void createAdvertiserShouldPublishAdvertiserEvent() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AdminCreateUserRequest request = new AdminCreateUserRequest("Acme", "4444", "ads@test.com", UserRole.ADVERTISER, null);
+        AdminCreateUserRequest request = new AdminCreateUserRequest("Acme", "4444", "ads@test.com", UserRole.ADVERTISER, null, null);
         when(temporaryPasswordService.generate()).thenReturn("TempPass123@");
         when(authServiceClient.createUser(any(AuthCreateUserRequest.class)))
                 .thenReturn(new AuthCreateUserResponse(userId, "ads@test.com", "ADVERTISER", true, true));
@@ -112,15 +128,32 @@ class AdminUserServiceTest {
         // Assert
         verify(userProfileService).createProfileAndWallet(userId, "Acme", "4444");
         verify(cinemaServiceClient, never()).assignCinemaAdmin(any(UUID.class), any(UUID.class));
+
+        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
+        verify(userEventsPublisher).publish(eventCaptor.capture());
+        UserCreatedEvent event = eventCaptor.getValue();
+        assertEquals(UsersConstants.EVENT_ADVERTISER_CREATED, event.event());
+        assertEquals(userId.toString(), event.id());
+        assertEquals("Acme", event.name());
+        assertEquals("4444", event.phone());
+        assertNull(event.companyName());
+
         verify(credentialsNotificationService).sendWelcomeCredentials("Acme", "ads@test.com", "TempPass123@", "http://localhost:4200/forgot-password");
     }
 
     @Test
-    void createCinemaAdminWithCinemaIdShouldAssignCinema() {
+    void createCinemaAdminWithCompanyNameShouldAssignCinemaAndPublishCinemaEvent() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID cinemaId = UUID.randomUUID();
-        AdminCreateUserRequest request = new AdminCreateUserRequest("Cinema Admin", "6666", "cinema@test.com", UserRole.CINEMA_ADMIN, cinemaId);
+        AdminCreateUserRequest request = new AdminCreateUserRequest(
+                "Cinema Admin",
+                "6666",
+                "cinema@test.com",
+                UserRole.CINEMA_ADMIN,
+                "  Cinepolis Majadas  ",
+                cinemaId
+        );
         when(temporaryPasswordService.generate()).thenReturn("TempPass123@");
         when(authServiceClient.createUser(any(AuthCreateUserRequest.class)))
                 .thenReturn(new AuthCreateUserResponse(userId, "cinema@test.com", "CINEMA_ADMIN", true, true));
@@ -129,13 +162,49 @@ class AdminUserServiceTest {
         adminUserService.createUser(request);
 
         // Assert
+        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
+        verify(userEventsPublisher).publish(eventCaptor.capture());
+        UserCreatedEvent event = eventCaptor.getValue();
+        assertEquals(UsersConstants.EVENT_CINEMA_ADMIN_CREATED, event.event());
+        assertEquals(userId.toString(), event.id());
+        assertEquals("Cinema Admin", event.name());
+        assertEquals("6666", event.phone());
+        assertEquals("Cinepolis Majadas", event.companyName());
+
         verify(cinemaServiceClient).assignCinemaAdmin(cinemaId, userId);
+    }
+
+    @Test
+    void createCinemaAdminWithoutCompanyNameShouldPublishNullCompanyName() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AdminCreateUserRequest request = new AdminCreateUserRequest(
+                "Cinema Admin",
+                "6666",
+                "cinema@test.com",
+                UserRole.CINEMA_ADMIN,
+                null,
+                null
+        );
+        when(temporaryPasswordService.generate()).thenReturn("TempPass123@");
+        when(authServiceClient.createUser(any(AuthCreateUserRequest.class)))
+                .thenReturn(new AuthCreateUserResponse(userId, "cinema@test.com", "CINEMA_ADMIN", true, true));
+
+        // Act
+        adminUserService.createUser(request);
+
+        // Assert
+        ArgumentCaptor<UserCreatedEvent> eventCaptor = ArgumentCaptor.forClass(UserCreatedEvent.class);
+        verify(userEventsPublisher).publish(eventCaptor.capture());
+        UserCreatedEvent event = eventCaptor.getValue();
+        assertEquals(UsersConstants.EVENT_CINEMA_ADMIN_CREATED, event.event());
+        assertNull(event.companyName());
     }
 
     @Test
     void createWithDuplicatedEmailShouldThrowException() {
         // Arrange
-        AdminCreateUserRequest request = new AdminCreateUserRequest("Ana", "5555", "ana@test.com", UserRole.CLIENT, null);
+        AdminCreateUserRequest request = new AdminCreateUserRequest("Ana", "5555", "ana@test.com", UserRole.CLIENT, null, null);
         when(temporaryPasswordService.generate()).thenReturn("TempPass123@");
         when(authServiceClient.createUser(any(AuthCreateUserRequest.class)))
                 .thenThrow(new DuplicateUserException("El email ya existe en auth-service"));
@@ -147,6 +216,7 @@ class AdminUserServiceTest {
         // Assert
         assertEquals("El email ya existe en auth-service", exception.getMessage());
         verify(userProfileService, never()).createProfileAndWallet(any(UUID.class), any(String.class), any(String.class));
+        verify(userEventsPublisher, never()).publish(any(UserCreatedEvent.class));
     }
 
     @Test

@@ -10,7 +10,10 @@ import com.cinema.users_service.dto.auth.AuthCreateUserResponse;
 import com.cinema.users_service.dto.auth.AuthUserResponse;
 import com.cinema.users_service.exception.InvalidAdminOperationException;
 import com.cinema.users_service.exception.UserProfileNotFoundException;
+import com.cinema.users_service.messaging.UserCreatedEvent;
 import com.cinema.users_service.repository.WalletRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -22,12 +25,15 @@ import java.util.UUID;
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminUserServiceImpl.class);
+
     private final AuthServiceClient authServiceClient;
     private final UserProfileService userProfileService;
     private final WalletRepository walletRepository;
     private final TemporaryPasswordService temporaryPasswordService;
     private final CredentialsNotificationService credentialsNotificationService;
     private final CinemaServiceClient cinemaServiceClient;
+    private final UserEventsPublisher userEventsPublisher;
     private final String passwordChangeUrl;
 
     public AdminUserServiceImpl(AuthServiceClient authServiceClient,
@@ -36,6 +42,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                                 TemporaryPasswordService temporaryPasswordService,
                                 CredentialsNotificationService credentialsNotificationService,
                                 CinemaServiceClient cinemaServiceClient,
+                                UserEventsPublisher userEventsPublisher,
                                 @Value("${users.password-change-url:http://localhost:4200/forgot-password}") String passwordChangeUrl) {
         this.authServiceClient = authServiceClient;
         this.userProfileService = userProfileService;
@@ -43,6 +50,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         this.temporaryPasswordService = temporaryPasswordService;
         this.credentialsNotificationService = credentialsNotificationService;
         this.cinemaServiceClient = cinemaServiceClient;
+        this.userEventsPublisher = userEventsPublisher;
         this.passwordChangeUrl = passwordChangeUrl;
     }
 
@@ -56,7 +64,9 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminUserResponse createUser(AdminCreateUserRequest request) {
         String temporaryPassword = temporaryPasswordService.generate();
         AuthCreateUserResponse created = authServiceClient.createUser(buildAuthRequest(request, temporaryPassword));
-        userProfileService.createProfileAndWallet(created.id(), request.name().trim(), request.phone());
+        String normalizedName = request.name().trim();
+        userProfileService.createProfileAndWallet(created.id(), normalizedName, request.phone());
+        publishAdminCreatedUserEvent(created, normalizedName, request.phone(), request.companyName());
         assignCinemaIfRequested(created.id(), request);
         credentialsNotificationService.sendWelcomeCredentials(request.name(), request.email(), temporaryPassword, passwordChangeUrl);
         return mapCreatedUser(created, request);
@@ -154,6 +164,46 @@ public class AdminUserServiceImpl implements AdminUserService {
                 request.role(),
                 true
         );
+    }
+
+    private void publishAdminCreatedUserEvent(AuthCreateUserResponse created, String name, String phone, String companyName) {
+        UserCreatedEvent event = new UserCreatedEvent(
+                resolveEventName(created.role()),
+                created.id().toString(),
+                name,
+                phone,
+                resolveCompanyNameForEvent(created.role(), companyName)
+        );
+        try {
+            userEventsPublisher.publish(event);
+        } catch (Exception exception) {
+            log.error("Error publicando evento de creacion por admin para userId={} role={}", created.id(), created.role(), exception);
+        }
+    }
+
+    private String resolveEventName(String role) {
+        if (UsersConstants.ROLE_CINEMA_ADMIN.equals(role)) {
+            return UsersConstants.EVENT_CINEMA_ADMIN_CREATED;
+        }
+        if (UserRole.ADVERTISER.name().equals(role)) {
+            return UsersConstants.EVENT_ADVERTISER_CREATED;
+        }
+        return UsersConstants.EVENT_USER_CREATED;
+    }
+
+    private String resolveCompanyNameForEvent(String role, String companyName) {
+        if (!UsersConstants.ROLE_CINEMA_ADMIN.equals(role)) {
+            return null;
+        }
+        return normalizeOptional(companyName);
+    }
+
+    private String normalizeOptional(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmedValue = value.trim();
+        return trimmedValue.isEmpty() ? null : trimmedValue;
     }
 
     private AdminUserResponse mapCreatedUser(AuthCreateUserResponse created, AdminCreateUserRequest request) {
