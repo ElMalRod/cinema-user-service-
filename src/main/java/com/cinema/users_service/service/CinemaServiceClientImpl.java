@@ -1,5 +1,6 @@
 package com.cinema.users_service.service;
 
+import com.cinema.users_service.constants.UsersConstants;
 import com.cinema.users_service.exception.ExternalServiceException;
 import com.cinema.users_service.exception.InvalidAdminOperationException;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,7 @@ public class CinemaServiceClientImpl implements CinemaServiceClient {
     public boolean hasCinemaAssigned(UUID adminUserId) {
         try {
             restClient.get()
-                    .uri(baseUrl + "/v1/cinemas/admin/" + adminUserId)
+                    .uri(baseUrl + "/cinemas/v1/cinemas/admin/" + adminUserId)
                     .retrieve()
                     .toBodilessEntity();
             return true;
@@ -44,7 +45,7 @@ public class CinemaServiceClientImpl implements CinemaServiceClient {
     public void assignCinemaAdmin(UUID cinemaId, UUID adminUserId) {
         try {
             restClient.patch()
-                    .uri(baseUrl + "/v1/cinemas/" + cinemaId + "/admin")
+                    .uri(baseUrl + "/cinemas/v1/cinemas/" + cinemaId + "/admin")
                     .body(new CinemaAdminAssignmentRequest(adminUserId))
                     .retrieve()
                     .toBodilessEntity();
