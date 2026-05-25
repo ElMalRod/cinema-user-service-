@@ -121,23 +121,6 @@
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
-                        <configuration>
-                            <excludes>
-                                <exclude>com.cinema.users_service.UsersServiceApplication*</exclude>
-                                <exclude>com.cinema.users_service.constants.*</exclude>
-                                <exclude>com.cinema.users_service.config.*</exclude>
-                                <exclude>com.cinema.users_service.controller.*</exclude>
-                                <exclude>com.cinema.users_service.dto.*</exclude>
-                                <exclude>com.cinema.users_service.dto.**/*</exclude>
-                                <exclude>com.cinema.users_service.exception.*</exclude>
-                                <exclude>com.cinema.users_service.messaging.*</exclude>
-                                <exclude>com.cinema.users_service.service.AuthServiceClientImpl*</exclude>
-                                <exclude>com.cinema.users_service.service.BrevoCredentialsNotificationService*</exclude>
-                                <exclude>com.cinema.users_service.service.InitialSystemAdminRunner*</exclude>
-                                <exclude>com.cinema.users_service.service.HeaderAccessService*</exclude>
-                                <exclude>com.cinema.users_service.service.TemporaryPasswordService*</exclude>
-                            </excludes>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>report</id>
@@ -155,22 +138,26 @@
                         <configuration>
                             <rules>
                                 <rule>
-                                    <element>CLASS</element>
-                                    <includes>
-                                        <include>com.cinema.users_service.service.WalletServiceImpl</include>
-                                        <include>com.cinema.users_service.service.UserProfileServiceImpl</include>
-                                        <include>com.cinema.users_service.service.AdminUserServiceImpl</include>
-                                        <include>com.cinema.users_service.service.UserBootstrapServiceImpl</include>
-                                    </includes>
+                                    <element>BUNDLE</element>
                                     <limits>
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
                                             <minimum>0.85</minimum>
                                         </limit>
+                                        <limit>
+                                            <counter>BRANCH</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.85</minimum>
+                                        </limit>
                                     </limits>
                                 </rule>
                             </rules>
+                            <excludes>
+                                <exclude>com/cinema/users_service/UsersServiceApplication*</exclude>
+                                <exclude>com/cinema/users_service/constants/*</exclude>
+                                <exclude>com/cinema/users_service/config/*</exclude>
+                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
