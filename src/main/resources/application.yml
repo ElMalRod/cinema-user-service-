@@ -49,7 +49,7 @@ users:
     base-url: ${CINEMA_SERVICE_BASE_URL:http://localhost:8084}
   kafka:
     topic-user-events: ${KAFKA_TOPIC_USER_EVENTS:user-events}
-  password-change-url: ${USERS_PASSWORD_CHANGE_URL:http://localhost:4200/forgot-password}
+  password-change-url: ${USERS_PASSWORD_CHANGE_URL:http://cinema-frontend-s3.s3-website.us-east-2.amazonaws.com}
   bootstrap:
     max-attempts: ${USERS_BOOTSTRAP_MAX_ATTEMPTS:20}
     retry-delay-ms: ${USERS_BOOTSTRAP_RETRY_DELAY_MS:3000}
