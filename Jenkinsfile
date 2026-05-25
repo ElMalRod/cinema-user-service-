@@ -91,6 +91,7 @@ pipeline {
                                     --name cinema-users-service \
                                     --restart unless-stopped \
                                     --network cinema-network \
+                                    -p 8082:8082 \
                                     -e SERVER_PORT=8082 \
                                     -e DB_URL='$DB_URL' \
                                     -e DB_USERNAME='$DB_USER' \
