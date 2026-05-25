@@ -99,6 +99,7 @@ pipeline {
                                     -e SPRING_KAFKA_BOOTSTRAP_SERVERS='18.188.55.33:9092' \
                                     -e AUTH_SERVICE_URL='http://cinema-auth-service:8081' \
                                     -e AUTH_SERVICE_BASE_URL='http://cinema-auth-service:8081' \
+                                    -e USERS_PASSWORD_CHANGE_URL='http://cinema-frontend-s3.s3-website.us-east-2.amazonaws.com' \
                                     cinema-users-service:latest
                             "
                         '''
