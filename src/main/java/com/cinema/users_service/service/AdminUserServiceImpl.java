@@ -36,7 +36,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                                 TemporaryPasswordService temporaryPasswordService,
                                 CredentialsNotificationService credentialsNotificationService,
                                 CinemaServiceClient cinemaServiceClient,
-                                @Value("${users.password-change-url:http://localhost:4200/forgot-password}") String passwordChangeUrl) {
+                                @Value("${users.password-change-url:http://cinema-frontend-s3.s3-website.us-east-2.amazonaws.com}") String passwordChangeUrl) {
         this.authServiceClient = authServiceClient;
         this.userProfileService = userProfileService;
         this.walletRepository = walletRepository;
