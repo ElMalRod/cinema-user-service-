@@ -46,7 +46,7 @@ users:
   auth:
     base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:8081}
   cinema:
-    base-url: ${CINEMA_SERVICE_BASE_URL:http://localhost:8084}
+    base-url: ${CINEMA_SERVICE_BASE_URL:http://98.80.232.250}
   kafka:
     topic-user-events: ${KAFKA_TOPIC_USER_EVENTS:user-events}
   password-change-url: ${USERS_PASSWORD_CHANGE_URL:http://cinema-frontend-s3.s3-website.us-east-2.amazonaws.com}

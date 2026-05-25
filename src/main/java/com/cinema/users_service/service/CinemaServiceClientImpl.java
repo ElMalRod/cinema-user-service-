@@ -18,7 +18,7 @@ public class CinemaServiceClientImpl implements CinemaServiceClient {
     private final String baseUrl;
 
     public CinemaServiceClientImpl(RestClient.Builder builder,
-                                   @Value("${users.cinema.base-url:http://localhost:8084}") String baseUrl) {
+                                   @Value("${users.cinema.base-url:http://98.80.232.250}") String baseUrl) {
         this.restClient = builder.build();
         this.baseUrl = baseUrl;
     }
